@@ -1,5 +1,5 @@
 import flet as ft
-
+from backend.models.user import User
 
 def Login(page: ft.Page):
     page.title = "Login"
@@ -29,11 +29,23 @@ def Login(page: ft.Page):
         border_color=ft.Colors.BLUE_ACCENT_700,
         color=ft.Colors.WHITE,
     )
+    
+    def on_login_click(e):
+        username = username_field.value
+        password = password_field.value
+        print(f"Usuario: {username}, Contraseña: {password}")   
+        user = User() 
+        if user.login(username, password):
+            print("Inicio de sesión exitoso")
+        else:
+            print("Usuario o contraseña incorrectos")
+    
     login_button = ft.ElevatedButton(
         text="Ingresar",
         color=ft.Colors.WHITE,
         bgcolor=ft.Colors.BLUE_ACCENT_700,
         width=200,
+        on_click=on_login_click  # Añadir el evento al botón
     )
 
     login_form = ft.Column(

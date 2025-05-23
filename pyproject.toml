@@ -9,6 +9,8 @@ authors = [
 ]
 dependencies = [
   "flet==0.28.2"
+  "google-genai"
+  "python-dotenv"
 ]
 
 [tool.flet]

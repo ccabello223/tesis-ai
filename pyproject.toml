@@ -8,8 +8,8 @@ authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-  "flet==0.28.2"
-  "google-genai"
+  "flet==0.28.2",
+  "google-genai",
   "python-dotenv"
 ]
 

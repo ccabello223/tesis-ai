@@ -1,9 +1,14 @@
 import flet as ft
+from Backend.models.gemini import Gemini
+
 
 def Chat(page: ft.Page):
     page.title = "Chat Interface"
     page.window.min_width = 1000
     page.window.min_height = 800
+
+    gemini_client = Gemini()
+    current_user_id = 1
 
     # --- Sidebar (Left) ---
     sidebar = ft.Container(
@@ -19,6 +24,7 @@ def Chat(page: ft.Page):
                     icon=ft.Icons.ADD,
                     icon_color=ft.Colors.WHITE,
                     icon_size=30,
+                    on_click=lambda e: new_chat(),
                 ),
                 ft.Container(expand=True),
                 ft.IconButton(
@@ -43,14 +49,7 @@ def Chat(page: ft.Page):
 
     # --- Chat State ---
     messages = []
-
-    # --- Chat Messages Area (dynamic) ---
-    chat_column = ft.Column(
-        expand=True,
-        width=page.width *0.7,
-        scroll=ft.ScrollMode.AUTO,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    )
+    current_chat_id = None
 
     def update_chat():
         chat_column.controls.clear()
@@ -80,35 +79,95 @@ def Chat(page: ft.Page):
                 )
             )
         else:
-            for msg, is_user in messages:
+            for msg_content, msg_role in messages:
+                is_user = msg_role == "user"
                 chat_column.controls.append(
                     ft.Row(
                         [
                             ft.Container(
                                 content=ft.Text(
-                                    msg,
+                                    msg_content,
                                     color=ft.Colors.WHITE,
                                     size=18,
                                     selectable=True,
                                 ),
-                                padding=ft.padding.symmetric(vertical=10, horizontal=18),
+                                padding=ft.padding.symmetric(
+                                    vertical=10, horizontal=18
+                                ),
                                 bgcolor="#1e2128" if is_user else "#1e1e1e",
                                 border_radius=18,
-                                width=min(600, max(80, len(msg)*10)),  # burbuja
+                                width=min(600, max(80, len(msg_content) * 10)),
                                 margin=ft.margin.only(top=4, bottom=4),
-                                shadow=ft.BoxShadow(
-                                    spread_radius=0,
-                                    blur_radius=0,
-                                    color=ft.Colors.with_opacity(0.40, ft.Colors.BLACK),
-                                    offset=ft.Offset(0, 4),
-                                ) if is_user else None,
+                                shadow=(
+                                    ft.BoxShadow(
+                                        spread_radius=0,
+                                        blur_radius=0,
+                                        color=ft.Colors.with_opacity(
+                                            0.40, ft.Colors.BLACK
+                                        ),
+                                        offset=ft.Offset(0, 4),
+                                    )
+                                    if is_user
+                                    else None
+                                ),
                             )
                         ],
-                        alignment=ft.MainAxisAlignment.END if is_user else ft.MainAxisAlignment.START,
+                        alignment=(
+                            ft.MainAxisAlignment.END
+                            if is_user
+                            else ft.MainAxisAlignment.START
+                        ),
                     )
                 )
         chat_column.auto_scroll = True
         page.update()
+
+    # --- Chat Messages Area (dynamic) ---
+    chat_column = ft.Column(
+        expand=True,
+        width=page.width * 0.7,
+        scroll=ft.ScrollMode.AUTO,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+    def load_chat_history(chat_id_to_load: int):
+        nonlocal messages, current_chat_id
+        messages.clear()
+        historial = gemini_client.obtener_historial_chat(chat_id_to_load)
+        for msg in historial:
+            messages.append((msg["content"], msg["role"]))
+        current_chat_id = chat_id_to_load
+        update_chat()
+
+    def new_chat():
+        nonlocal messages, current_chat_id
+        messages.clear()
+        current_chat_id = None
+        update_chat()
+        # Aquí podrías querer actualizar la lista de chats en la sidebar
+
+    def send_message(e):
+        nonlocal current_chat_id
+        user_msg = input_field.value.strip()
+        if user_msg:
+            messages.append((user_msg, "user"))
+            input_field.value = ""
+            update_chat()
+
+            # Llama a la API de Gemini
+            try:
+                response_text = gemini_client.generar_respuesta(
+                    prompt=user_msg, chat_id=current_chat_id, user_id=current_user_id
+                )
+                # Actualiza el chat_id si se creó un nuevo chat
+                if current_chat_id is None:
+                    current_chat_id = gemini_client.current_chat_id
+
+                messages.append((response_text, "model"))
+            except Exception as ex:
+                messages.append((f"Error al obtener respuesta: {ex}", "model"))
+            finally:
+                update_chat()
 
     # --- Input Bar ---
     input_field = ft.TextField(
@@ -127,14 +186,6 @@ def Chat(page: ft.Page):
         max_lines=3,
     )
 
-    def send_message(e):
-        user_msg = input_field.value.strip()
-        if user_msg:
-            messages.append((user_msg, True))
-            messages.append(("A nadie le importa perdedor 🤫", False))
-            input_field.value = ""
-            update_chat()
-
     input_bar = ft.Container(
         content=ft.Row(
             [
@@ -149,9 +200,7 @@ def Chat(page: ft.Page):
                     icon_color=ft.Colors.WHITE,
                     icon_size=25,
                     bgcolor=ft.Colors.BLUE_ACCENT_700,
-                    style=ft.ButtonStyle(
-                        shape=ft.RoundedRectangleBorder(radius=8)
-                    ),
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
                     on_click=send_message,
                 ),
             ],
@@ -169,63 +218,59 @@ def Chat(page: ft.Page):
             blur_radius=0,
             color=ft.Colors.with_opacity(0.40, ft.Colors.BLACK),
             offset=ft.Offset(0, 4),
-        )
+        ),
     )
 
     # --- Main Chat Area (Right) ---
     chat_area = ft.Container(
-        content=ft.Column([
-            # Top Bar (Profile Icon)
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Container(expand=True),
-                        ft.IconButton(
-                            icon=ft.Icons.PERSON,
-                            icon_color=ft.Colors.WHITE,
-                            icon_size=30,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.END,
+        content=ft.Column(
+            [
+                # Top Bar (Profile Icon)
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Container(expand=True),
+                            ft.IconButton(
+                                icon=ft.Icons.PERSON,
+                                icon_color=ft.Colors.WHITE,
+                                icon_size=30,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.END,
+                        expand=True,
+                    ),
+                    height=50,
+                    padding=ft.padding.only(right=15, top=10),
+                ),
+                ft.Container(
+                    content=chat_column,
+                    alignment=ft.alignment.center,
                     expand=True,
                 ),
-                height=50,
-                padding=ft.padding.only(right=15, top=10)
-            ),
-            ft.Container(
-                content=chat_column,
-                alignment=ft.alignment.center,
-                expand=True,
-            ),
-            
-            ft.Row(
-                [   
-                    ft.Column(
-                        [
-                            input_bar, 
-                            ft.Container()
-                        ]
-                    )
-                    
-                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-        ]),
+                ft.Row(
+                    [ft.Column([input_bar, ft.Container()])],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+            ]
+        ),
         expand=True,
-        bgcolor="#1e1e1e"
+        bgcolor="#1e1e1e",
     )
-    
-    update_chat()
-    
+
+    # Cargar historial del último chat o iniciar uno nuevo
+    initial_chats = gemini_client.obtener_chats_usuario(current_user_id)
+    if initial_chats:
+        load_chat_history(initial_chats[0]["id"])
+    else:
+        update_chat()
+
     page.add(
         ft.Container(
-            content=ft.Row(
-                spacing=0,
-                controls=[
-                    sidebar,
-                    chat_area
-                ]
-            ),
+            content=ft.Row(spacing=0, controls=[sidebar, chat_area]),
             expand=True,
         )
     )
+
+
+if __name__ == "__main__":
+    ft.app(target=Chat)

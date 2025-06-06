@@ -1,10 +1,10 @@
 import flet as ft
-from Frontend.Views.Register import Register
+from Frontend.Views.InitialView import InitialView
 
 
 def main(page: ft.Page):
     page.clean()
-    Register(page)
+    InitialView(page)
     page.update()
 
 ft.app(main)

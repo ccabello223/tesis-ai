@@ -4,57 +4,17 @@ from Backend.models.gemini import Gemini
 
 def Chat(page: ft.Page):
     page.title = "Chat Interface"
-    page.window.min_width = 1000
-    page.window.min_height = 800
-
     gemini_client = Gemini()
     current_user_id = 1
 
-    # --- Sidebar (Left) ---
-    sidebar = ft.Container(
-        content=ft.Column(
-            [
-                ft.IconButton(
-                    icon=ft.Icons.MENU,
-                    icon_color=ft.Colors.WHITE,
-                    icon_size=30,
-                ),
-                ft.Container(height=20),
-                ft.IconButton(
-                    icon=ft.Icons.ADD,
-                    icon_color=ft.Colors.WHITE,
-                    icon_size=30,
-                    on_click=lambda e: new_chat(),
-                ),
-                ft.Container(expand=True),
-                ft.IconButton(
-                    icon=ft.Icons.HELP_OUTLINE,
-                    icon_color=ft.Colors.WHITE,
-                    icon_size=30,
-                ),
-                ft.IconButton(
-                    icon=ft.Icons.SETTINGS,
-                    icon_color=ft.Colors.WHITE,
-                    icon_size=30,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=0,
-            expand=True,
-        ),
-        width=70,
-        bgcolor="#1e2126",
-    )
-
-    # --- Chat State ---
     messages = []
     current_chat_id = None
 
-    def update_chat():
+    def update_chat(e=None):
         chat_column.controls.clear()
+        screen_width = page.window_width
+
         if not messages:
-            # Show welcome message if no messages yet
             chat_column.controls.append(
                 ft.Container(
                     content=ft.Column(
@@ -66,9 +26,7 @@ def Chat(page: ft.Page):
                                 color=ft.Colors.BLUE_ACCENT_400,
                             ),
                             ft.Text(
-                                "¿Cómo puedo ayudarte?",
-                                size=20,
-                                color=ft.Colors.WHITE,
+                                "¿Cómo puedo ayudarte?", size=20, color=ft.Colors.WHITE
                             ),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -81,70 +39,72 @@ def Chat(page: ft.Page):
         else:
             for msg_content, msg_role in messages:
                 is_user = msg_role == "user"
+
+                horizontal_padding_total = 40
+
+                if screen_width < 600:
+                    content_width = screen_width * 0.9 - horizontal_padding_total
+                    content_width = max(content_width, 100)
+                else:
+                    content_width = min(600, max(100, len(msg_content) * 9))
+                    content_width = max(content_width, 100)
+
+                if is_user:
+                    message_control = ft.Container(
+                        content=ft.Text(
+                            msg_content,
+                            color=ft.Colors.WHITE,
+                            size=18,
+                            selectable=True,
+                            width=content_width,
+                            max_lines=None,
+                        ),
+                        padding=ft.padding.symmetric(vertical=10, horizontal=18),
+                        bgcolor="#1e2128",
+                        border_radius=18,
+                        width=content_width + 36,
+                        margin=ft.margin.only(top=4, bottom=4),
+                        expand=False,
+                    )
+                else:
+                    message_control = ft.Container(
+                        content=ft.Text(
+                            msg_content,
+                            color=ft.Colors.WHITE,
+                            size=18,
+                            selectable=True,
+                            text_align=ft.TextAlign.START,
+                            width=content_width,
+                            max_lines=None,
+                        ),
+                        padding=ft.padding.symmetric(vertical=5, horizontal=0),
+                        margin=ft.margin.only(top=4, bottom=4, left=20, right=20),
+                        width=content_width,
+                        expand=False,
+                    )
+
                 chat_column.controls.append(
                     ft.Row(
-                        [
-                            ft.Container(
-                                content=ft.Text(
-                                    msg_content,
-                                    color=ft.Colors.WHITE,
-                                    size=18,
-                                    selectable=True,
-                                ),
-                                padding=ft.padding.symmetric(
-                                    vertical=10, horizontal=18
-                                ),
-                                bgcolor="#1e2128" if is_user else "#1e1e1e",
-                                border_radius=18,
-                                width=min(600, max(80, len(msg_content) * 10)),
-                                margin=ft.margin.only(top=4, bottom=4),
-                                shadow=(
-                                    ft.BoxShadow(
-                                        spread_radius=0,
-                                        blur_radius=0,
-                                        color=ft.Colors.with_opacity(
-                                            0.40, ft.Colors.BLACK
-                                        ),
-                                        offset=ft.Offset(0, 4),
-                                    )
-                                    if is_user
-                                    else None
-                                ),
-                            )
-                        ],
+                        [message_control],
                         alignment=(
                             ft.MainAxisAlignment.END
                             if is_user
                             else ft.MainAxisAlignment.START
                         ),
+                        expand=True,
                     )
                 )
+
         chat_column.auto_scroll = True
         page.update()
 
-    # --- Chat Messages Area (dynamic) ---
+    page.on_resize = update_chat
+
     chat_column = ft.Column(
         expand=True,
-        width=page.width * 0.7,
         scroll=ft.ScrollMode.AUTO,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
     )
-
-    def load_chat_history(chat_id_to_load: int):
-        nonlocal messages, current_chat_id
-        messages.clear()
-        historial = gemini_client.obtener_historial_chat(chat_id_to_load)
-        for msg in historial:
-            messages.append((msg["content"], msg["role"]))
-        current_chat_id = chat_id_to_load
-        update_chat()
-
-    def new_chat():
-        nonlocal messages, current_chat_id
-        messages.clear()
-        current_chat_id = None
-        update_chat()
-        # Aquí podrías querer actualizar la lista de chats en la sidebar
 
     def send_message(e):
         nonlocal current_chat_id
@@ -154,12 +114,10 @@ def Chat(page: ft.Page):
             input_field.value = ""
             update_chat()
 
-            # Llama a la API de Gemini
             try:
                 response_text = gemini_client.generar_respuesta(
                     prompt=user_msg, chat_id=current_chat_id, user_id=current_user_id
                 )
-                # Actualiza el chat_id si se creó un nuevo chat
                 if current_chat_id is None:
                     current_chat_id = gemini_client.current_chat_id
 
@@ -169,7 +127,6 @@ def Chat(page: ft.Page):
             finally:
                 update_chat()
 
-    # --- Input Bar ---
     input_field = ft.TextField(
         hint_text="Pregúntale a...",
         hint_style=ft.TextStyle(color=ft.Colors.GREY_600),
@@ -190,9 +147,7 @@ def Chat(page: ft.Page):
         content=ft.Row(
             [
                 ft.IconButton(
-                    icon=ft.Icons.ATTACH_FILE,
-                    icon_color=ft.Colors.WHITE,
-                    icon_size=25,
+                    icon=ft.Icons.ATTACH_FILE, icon_color=ft.Colors.WHITE, icon_size=25
                 ),
                 input_field,
                 ft.IconButton(
@@ -209,23 +164,14 @@ def Chat(page: ft.Page):
         ),
         padding=ft.padding.only(left=15, right=15, top=15, bottom=30),
         height=90,
-        width=page.width * 0.6,
         alignment=ft.alignment.center,
         bgcolor="#1e2128",
         border_radius=15,
-        shadow=ft.BoxShadow(
-            spread_radius=0,
-            blur_radius=0,
-            color=ft.Colors.with_opacity(0.40, ft.Colors.BLACK),
-            offset=ft.Offset(0, 4),
-        ),
     )
 
-    # --- Main Chat Area (Right) ---
     chat_area = ft.Container(
         content=ft.Column(
             [
-                # Top Bar (Profile Icon)
                 ft.Container(
                     content=ft.Row(
                         [
@@ -243,12 +189,16 @@ def Chat(page: ft.Page):
                     padding=ft.padding.only(right=15, top=10),
                 ),
                 ft.Container(
-                    content=chat_column,
-                    alignment=ft.alignment.center,
-                    expand=True,
+                    content=chat_column, alignment=ft.alignment.center, expand=True
                 ),
                 ft.Row(
-                    [ft.Column([input_bar, ft.Container()])],
+                    [
+                        ft.Column(
+                            [input_bar, ft.Container()],
+                            expand=True,
+                            alignment=ft.CrossAxisAlignment.CENTER,
+                        )
+                    ],
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
             ]
@@ -257,19 +207,9 @@ def Chat(page: ft.Page):
         bgcolor="#1e1e1e",
     )
 
-    # Cargar historial del último chat o iniciar uno nuevo
-    initial_chats = gemini_client.obtener_chats_usuario(current_user_id)
-    if initial_chats:
-        load_chat_history(initial_chats[0]["id"])
-    else:
-        update_chat()
+    page.add(ft.Container(content=chat_area, expand=True))
 
-    page.add(
-        ft.Container(
-            content=ft.Row(spacing=0, controls=[sidebar, chat_area]),
-            expand=True,
-        )
-    )
+    update_chat()
 
 
 if __name__ == "__main__":

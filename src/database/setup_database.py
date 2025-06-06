@@ -49,9 +49,19 @@ def setup_database(conn: sqlite3.Connection):
         ('carlos@example.com', 'abc123', 'Carlos Gómez', 'carlosg'),
     ]
 
+    # Insertar usuarios de prueba solo si no existen
+    for correo, password, nombre, usuario in users:
+        cursor.execute("SELECT id FROM User WHERE correo = ? OR usuario = ?", (correo, usuario))
+        if cursor.fetchone() is None:
+            cursor.execute('''
+            INSERT INTO User (correo, password, nombre, usuario) 
+            VALUES (?, ?, ?, ?)
+            ''', (correo, password, nombre, usuario))
+            print(f"Usuario '{usuario}' insertado.")
+        else:
+            print(f"Usuario '{usuario}' o correo '{correo}' ya existe, omitiendo inserción.")
 
     conn.commit()
-
     print("Base de datos inicializada o verificada.")
 
 # Solo para ejecutar el archivo independiente

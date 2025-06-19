@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 import pathlib
 import sqlite3
 from typing import List, Dict, Optional

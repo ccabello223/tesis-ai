@@ -1,5 +1,5 @@
 import flet as ft
-from Backend.models.user import User 
+from backend.models.user import User 
 from Frontend.Views.Home import Home
 
 

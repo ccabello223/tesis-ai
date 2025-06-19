@@ -1,5 +1,5 @@
 import flet as ft
-from Backend.models.gemini import Gemini
+from backend.models.gemini import Gemini
 
 
 def Chat(page: ft.Page):

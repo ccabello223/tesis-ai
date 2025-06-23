@@ -1,7 +1,7 @@
 import sqlite3
 
 class User:
-    def __init__(self, db_path="src/database/tesisIA.db"):
+    def __init__(self, db_path="tesisIA.db"):
         self.db_path = db_path
 
     def login(self, username: str, password: str) -> bool:

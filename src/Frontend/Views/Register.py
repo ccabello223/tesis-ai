@@ -1,76 +1,148 @@
 import flet as ft
+from backend.models.user import User
 from Frontend.Views.Login import Login
 
+
 def Register(page: ft.Page):
-
-    page.bgcolor = ft.Colors.TRANSPARENT
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.title = "Registrarse - ANGLAI"
+    page.vertical_alignment = ft.CrossAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.fonts = {
-        "Aleo Bold Italic": "https://raw.githubusercontent.com/google/fonts/master/ofl/aleo/Aleo-BoldItalic.ttf"
-    }
+    page.bgcolor = ft.Colors.BLUE_700
+    page.window_width = 800
+    page.window_height = 700
+    page.window_resizable = False
 
-    page.window.always_on_top = True
-    page.decoration = ft.BoxDecoration(
-        image=ft.DecorationImage(
-            src="https://searchengineland.com/wp-content/seloads/2015/05/brain-future-tech-implant-ss-1920.jpg",
-            fit=ft.ImageFit.COVER,
-        )
+    logo = ft.Image(src="src/assets/logo.png", width=120, height=120)
+
+    title = ft.Text(
+        "Únete a la Aventura ANGLAI",
+        size=28,
+        weight=ft.FontWeight.BOLD,
+        color=ft.Colors.WHITE,
     )
 
-    logo = ft.Image(src="src/assets/logo.png", width=150, height=150)
-
-    title = ft.Text("Regístrate", font_family="Aleo Bold Italic", size=25)
-
-    username = ft.TextField(
-        multiline=False,
+    username_field = ft.TextField(
         label="Nombre de usuario",
-        border_color=ft.Colors.BLUE_ACCENT_700,
+        label_style=ft.TextStyle(color=ft.Colors.BLUE_GREY_100),
+        border_color=ft.Colors.CYAN_ACCENT_400,
+        focused_border_color=ft.Colors.CYAN_ACCENT_200,
+        color=ft.Colors.WHITE,
+        cursor_color=ft.Colors.CYAN_ACCENT_100,
+        width=300,
+        border_radius=10,
+        autocorrect=False,
+        enable_suggestions=False,
     )
-    email = ft.TextField(
-        multiline=False,
+    email_field = ft.TextField(
         label="Correo electrónico",
-        border_color=ft.Colors.BLUE_ACCENT_700,
+        label_style=ft.TextStyle(color=ft.Colors.BLUE_GREY_100),
+        border_color=ft.Colors.CYAN_ACCENT_400,
+        focused_border_color=ft.Colors.CYAN_ACCENT_200,
+        color=ft.Colors.WHITE,
+        cursor_color=ft.Colors.CYAN_ACCENT_100,
         keyboard_type=ft.KeyboardType.EMAIL,
+        width=300,
+        border_radius=10,
     )
-    password = ft.TextField(
-        multiline=False,
+    password_field = ft.TextField(
         label="Contraseña",
+        label_style=ft.TextStyle(color=ft.Colors.BLUE_GREY_100),
         password=True,
-        border_color=ft.Colors.BLUE_ACCENT_700,
         can_reveal_password=True,
-    )
-    register_button = ft.ElevatedButton(
-        text="Registrarse", 
-        color="White", 
-        bgcolor=ft.Colors.BLUE_ACCENT_700,
-        width=200,
-        on_click= lambda e: handle_register(page)
-    )
-
-    register_form = ft.Column(
-        [logo, title, username, email, password, register_button],
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=25,
+        border_color=ft.Colors.CYAN_ACCENT_400,
+        focused_border_color=ft.Colors.CYAN_ACCENT_200,
+        color=ft.Colors.WHITE,
+        cursor_color=ft.Colors.CYAN_ACCENT_100,
+        width=300,
+        border_radius=10,
     )
 
-    register_contain = ft.Container(
-        content=register_form,
-        width=400,
-        height=600,
-        padding=40,
-        alignment=ft.alignment.center,
-        bgcolor=ft.Colors.BLACK,
-        border_radius=20
+    error_text = ft.Text(
+        value="", color=ft.Colors.RED_ACCENT_400, size=14, visible=False
     )
 
-    page.add(register_contain)
-    
-    
-        
-    def handle_register(page: ft.Page):
+    def handle_register(e):
+        user = User()
+        if user.register(username_field.value, email_field.value, password_field.value):
+            print("Registro exitoso")
+            page.clean()
+            Login(page)
+            page.update()
+        else:
+            print("Error en el registro")
+            error_text.value = "Error al registrar. Intenta de nuevo."
+            error_text.visible = True
+            page.update()
+
+        print(
+            f"Registrando: {username_field.value}, {email_field.value}, {password_field.value}"
+        )
         page.clean()
         Login(page)
         page.update()
-        
+
+    register_button = ft.ElevatedButton(
+        text="Registrarse",
+        icon=ft.Icons.PERSON_ADD,
+        color=ft.Colors.BLUE_GREY_900,
+        bgcolor=ft.Colors.CYAN_ACCENT_400,
+        width=250,
+        height=50,
+        on_click=handle_register,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
+    )
+
+    def navigate_to_login_from_register(e):
+        page.clean()
+        Login(page)
+        page.update()
+
+    login_link = ft.TextButton(
+        text="¿Ya tienes una cuenta? Inicia sesión.",
+        style=ft.ButtonStyle(color=ft.Colors.BLUE_ACCENT_100),
+        on_click=navigate_to_login_from_register,
+    )
+
+    register_form_content = ft.Column(
+        [
+            logo,
+            title,
+            ft.Container(height=20),
+            username_field,
+            email_field,
+            password_field,
+            error_text,
+            ft.Container(height=30),
+            register_button,
+            login_link,
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=15,
+    )
+
+    register_container = ft.Container(
+        content=register_form_content,
+        width=450,
+        height=650,
+        padding=40,
+        alignment=ft.alignment.center,
+        bgcolor=ft.Colors.BLACK54,
+        border_radius=ft.border_radius.all(20),
+        shadow=ft.BoxShadow(
+            spread_radius=2,
+            blur_radius=15,
+            color=ft.Colors.BLACK38,
+            offset=ft.Offset(0, 8),
+        ),
+    )
+
+    page.add(
+        ft.Column(
+            [register_container],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+            expand=True,
+        )
+    )
+    page.update()
